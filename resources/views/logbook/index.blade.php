@@ -58,28 +58,32 @@
                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             </div>
 
-            <!-- Daftar Barang & Jumlah (Hybrid: Pilih dari Inventori atau Ketik Manual) -->
+            <!-- Daftar Barang & Jumlah (Custom Searchable Dropdown + Ketik Manual) -->
             <div>
                 <div class="flex items-center justify-between mb-1">
                     <label class="block text-xs font-medium text-slate-700">Daftar Barang & Jumlah</label>
-                    <span class="text-[10px] text-slate-400">Pilih dari inventori atau ketik manual</span>
+                    <span class="text-[10px] text-slate-400">Klik untuk pilih atau ketik manual</span>
                 </div>
-
-                <datalist id="inventory-options">
-                    @foreach($inventories as $inv)
-                        <option value="{{ $inv->nama_alat }}">
-                            {{ $inv->kategori ? "[{$inv->kategori}] " : '' }}Ready: {{ $inv->stok_tersedia }} unit
-                        </option>
-                    @endforeach
-                </datalist>
 
                 <div id="items-container" class="space-y-2">
                     <div class="grid grid-cols-12 gap-2 item-row">
-                        <input type="hidden" name="items[0][inventory_id]" class="inventory-id-input">
-                        <input type="text" name="items[0][name]" list="inventory-options"
-                               oninput="syncInventorySelection(this)"
-                               placeholder="Pilih / ketik nama alat..." required autocomplete="off"
-                               class="col-span-9 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
+                        <div class="col-span-9 relative dropdown-wrapper">
+                            <input type="hidden" name="items[0][inventory_id]" class="inventory-id-input">
+                            <input type="text" name="items[0][name]"
+                                   onfocus="openItemDropdown(this)"
+                                   oninput="filterItemDropdown(this)"
+                                   placeholder="Pilih / ketik nama alat..." required autocomplete="off"
+                                   class="item-name-input w-full pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
+                            <button type="button" onclick="toggleItemDropdown(this)"
+                                    class="absolute inset-y-0 right-0 px-2.5 flex items-center text-slate-500 hover:text-slate-800"
+                                    tabindex="-1" title="Lihat daftar alat">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div class="item-dropdown hidden absolute left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-30 divide-y divide-gray-100"></div>
+                        </div>
+
                         <input type="number" name="items[0][qty]" value="1" min="1" required
                                class="col-span-3 px-2.5 py-2 text-sm text-center border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A] qty-input">
                     </div>
@@ -219,31 +223,111 @@
 @endsection
 
 @push('scripts')
-<script>
-    const inventoryMap = @json($inventories->mapWithKeys(fn($item) => [
-        mb_strtolower(trim($item->nama_alat)) => [
+@php
+    $formattedInventories = $inventories->map(function ($item) {
+        return [
             'id' => $item->id,
+            'nama' => $item->nama_alat,
+            'kategori' => $item->kategori ?? '',
             'stok' => $item->stok_tersedia,
-        ]
-    ]));
+        ];
+    })->values();
+@endphp
+<script>
+    const inventoryList = {!! json_encode($formattedInventories) !!};
 
-    function syncInventorySelection(inputEl) {
+    function closeAllDropdowns() {
+        document.querySelectorAll('.item-dropdown').forEach(el => el.classList.add('hidden'));
+    }
+
+    function renderDropdownOptions(wrapper, keyword = '') {
+        const dropdown = wrapper.querySelector('.item-dropdown');
+        const q = keyword.trim().toLowerCase();
+
+        const filtered = inventoryList.filter(item =>
+            item.nama.toLowerCase().includes(q) || item.kategori.toLowerCase().includes(q)
+        );
+
+        if (filtered.length === 0) {
+            dropdown.innerHTML = `
+                <div class="px-3 py-2.5 text-xs text-slate-500">
+                    Tidak ada di master inventori — lanjut ketik untuk input manual.
+                </div>`;
+            return;
+        }
+
+        dropdown.innerHTML = filtered.map(item => `
+            <button type="button"
+                    onclick="selectInventoryItem(this, ${item.id}, ${JSON.stringify(item.nama).replace(/"/g, '&quot;')}, ${item.stok})"
+                    class="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between gap-2 transition">
+                <span class="text-xs font-medium text-slate-800 truncate">${item.nama}</span>
+                <span class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-[#1E3A8A]">
+                    Ready: ${item.stok}
+                </span>
+            </button>
+        `).join('');
+    }
+
+    function openItemDropdown(inputEl) {
+        closeAllDropdowns();
+        const wrapper = inputEl.closest('.dropdown-wrapper');
+        renderDropdownOptions(wrapper, inputEl.value);
+        wrapper.querySelector('.item-dropdown').classList.remove('hidden');
+    }
+
+    function toggleItemDropdown(btnEl) {
+        const wrapper = btnEl.closest('.dropdown-wrapper');
+        const dropdown = wrapper.querySelector('.item-dropdown');
+        const inputEl = wrapper.querySelector('.item-name-input');
+        const isHidden = dropdown.classList.contains('hidden');
+
+        closeAllDropdowns();
+        if (isHidden) {
+            renderDropdownOptions(wrapper, '');
+            dropdown.classList.remove('hidden');
+            inputEl.focus();
+        }
+    }
+
+    function filterItemDropdown(inputEl) {
+        const wrapper = inputEl.closest('.dropdown-wrapper');
         const row = inputEl.closest('.item-row');
         const hiddenId = row.querySelector('.inventory-id-input');
         const qtyInput = row.querySelector('.qty-input');
-        const key = inputEl.value.trim().toLowerCase();
 
-        if (inventoryMap[key]) {
-            hiddenId.value = inventoryMap[key].id;
-            qtyInput.max = inventoryMap[key].stok;
-            if (parseInt(qtyInput.value || 1) > inventoryMap[key].stok) {
-                qtyInput.value = inventoryMap[key].stok;
-            }
+        const exactMatch = inventoryList.find(item => item.nama.toLowerCase() === inputEl.value.trim().toLowerCase());
+        if (exactMatch) {
+            hiddenId.value = exactMatch.id;
+            qtyInput.max = exactMatch.stok;
+            if (parseInt(qtyInput.value || 1) > exactMatch.stok) qtyInput.value = exactMatch.stok;
         } else {
             hiddenId.value = '';
             qtyInput.removeAttribute('max');
         }
+
+        renderDropdownOptions(wrapper, inputEl.value);
+        wrapper.querySelector('.item-dropdown').classList.remove('hidden');
     }
+
+    function selectInventoryItem(optionBtn, id, nama, stok) {
+        const row = optionBtn.closest('.item-row');
+        const nameInput = row.querySelector('.item-name-input');
+        const hiddenId = row.querySelector('.inventory-id-input');
+        const qtyInput = row.querySelector('.qty-input');
+
+        nameInput.value = nama;
+        hiddenId.value = id;
+        qtyInput.max = stok;
+        if (parseInt(qtyInput.value || 1) > stok) qtyInput.value = stok;
+
+        closeAllDropdowns();
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.dropdown-wrapper')) {
+            closeAllDropdowns();
+        }
+    });
 
     let itemIndex = 1;
     function addItemRow() {
@@ -251,11 +335,22 @@
         const row = document.createElement('div');
         row.className = 'grid grid-cols-12 gap-2 item-row';
         row.innerHTML = `
-            <input type="hidden" name="items[${itemIndex}][inventory_id]" class="inventory-id-input">
-            <input type="text" name="items[${itemIndex}][name]" list="inventory-options"
-                   oninput="syncInventorySelection(this)"
-                   placeholder="Pilih / ketik alat berikutnya..." required autocomplete="off"
-                   class="col-span-8 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
+            <div class="col-span-8 relative dropdown-wrapper">
+                <input type="hidden" name="items[${itemIndex}][inventory_id]" class="inventory-id-input">
+                <input type="text" name="items[${itemIndex}][name]"
+                       onfocus="openItemDropdown(this)"
+                       oninput="filterItemDropdown(this)"
+                       placeholder="Pilih / ketik alat berikutnya..." required autocomplete="off"
+                       class="item-name-input w-full pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
+                <button type="button" onclick="toggleItemDropdown(this)"
+                        class="absolute inset-y-0 right-0 px-2.5 flex items-center text-slate-500 hover:text-slate-800"
+                        tabindex="-1" title="Lihat daftar alat">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div class="item-dropdown hidden absolute left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-30 divide-y divide-gray-100"></div>
+            </div>
             <input type="number" name="items[${itemIndex}][qty]" value="1" min="1" required
                    class="col-span-3 px-2.5 py-2 text-sm text-center border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A] qty-input">
             <button type="button" onclick="this.closest('.item-row').remove()"
