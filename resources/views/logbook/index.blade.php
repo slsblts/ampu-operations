@@ -14,7 +14,7 @@
     <section class="bg-white border border-gray-200 rounded-md p-4 mb-5">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-base font-bold text-slate-900">Catat Peminjaman</h2>
-            <span class="text-[11px] text-slate-400">Form Cepat Alat Studio</span>
+            <span class="text-[11px] text-slate-400">Terhubung Inventori</span>
         </div>
 
         <form action="{{ route('logbook.store') }}" method="POST" class="space-y-3">
@@ -22,19 +22,19 @@
 
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Nama Peminjam</label>
-                <input type="text" name="borrower_name" placeholder="Contoh: Priya / Rizki" required
+                <input type="text" name="borrower_name" value="{{ old('borrower_name') }}" placeholder="Contoh: Priya / Rizki" required
                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">NIM / NIK</label>
-                    <input type="text" name="borrower_id_number" placeholder="Contoh: 25SA21A4" required
+                    <input type="text" name="borrower_id_number" value="{{ old('borrower_id_number') }}" placeholder="Contoh: 25SA21A4" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">No. HP / WhatsApp</label>
-                    <input type="text" name="phone_number" placeholder="Contoh: 081930522954" required
+                    <input type="text" name="phone_number" value="{{ old('phone_number') }}" placeholder="Contoh: 081930522954" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
             </div>
@@ -42,33 +42,49 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Organisasi / Divisi</label>
-                    <input type="text" name="organization" placeholder="Contoh: HMPSSI / Intermedia" required
+                    <input type="text" name="organization" value="{{ old('organization') }}" placeholder="Contoh: HMPSSI / Intermedia" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Keperluan / Acara</label>
-                    <input type="text" name="purpose" placeholder="Contoh: Podcast / Makrab IF" required
+                    <input type="text" name="purpose" value="{{ old('purpose') }}" placeholder="Contoh: Podcast / Makrab IF" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
             </div>
 
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal Pinjam</label>
-                <input type="date" name="borrow_date" value="{{ date('Y-m-d') }}" required
+                <input type="date" name="borrow_date" value="{{ old('borrow_date', date('Y-m-d')) }}" required
                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             </div>
 
-            <!-- Daftar Barang & Jumlah -->
+            <!-- Daftar Barang & Jumlah (Hybrid: Pilih dari Inventori atau Ketik Manual) -->
             <div>
-                <label class="block text-xs font-medium text-slate-700 mb-1">Daftar Barang & Jumlah</label>
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-medium text-slate-700">Daftar Barang & Jumlah</label>
+                    <span class="text-[10px] text-slate-400">Pilih dari inventori atau ketik manual</span>
+                </div>
+
+                <datalist id="inventory-options">
+                    @foreach($inventories as $inv)
+                        <option value="{{ $inv->nama_alat }}">
+                            {{ $inv->kategori ? "[{$inv->kategori}] " : '' }}Ready: {{ $inv->stok_tersedia }} unit
+                        </option>
+                    @endforeach
+                </datalist>
+
                 <div id="items-container" class="space-y-2">
-                    <div class="grid grid-cols-12 gap-2">
-                        <input type="text" name="items[0][name]" placeholder="Nama alat (misal: Tripod Kamera)" required
+                    <div class="grid grid-cols-12 gap-2 item-row">
+                        <input type="hidden" name="items[0][inventory_id]" class="inventory-id-input">
+                        <input type="text" name="items[0][name]" list="inventory-options"
+                               oninput="syncInventorySelection(this)"
+                               placeholder="Pilih / ketik nama alat..." required autocomplete="off"
                                class="col-span-9 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                         <input type="number" name="items[0][qty]" value="1" min="1" required
-                               class="col-span-3 px-2.5 py-2 text-sm text-center border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
+                               class="col-span-3 px-2.5 py-2 text-sm text-center border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A] qty-input">
                     </div>
                 </div>
+
                 <button type="button" onclick="addItemRow()"
                         class="mt-2 text-xs font-medium text-[#1E3A8A] hover:underline">
                     + Tambah Baris Alat
@@ -204,16 +220,47 @@
 
 @push('scripts')
 <script>
+    const inventoryMap = @json($inventories->mapWithKeys(fn($item) => [
+        mb_strtolower(trim($item->nama_alat)) => [
+            'id' => $item->id,
+            'stok' => $item->stok_tersedia,
+        ]
+    ]));
+
+    function syncInventorySelection(inputEl) {
+        const row = inputEl.closest('.item-row');
+        const hiddenId = row.querySelector('.inventory-id-input');
+        const qtyInput = row.querySelector('.qty-input');
+        const key = inputEl.value.trim().toLowerCase();
+
+        if (inventoryMap[key]) {
+            hiddenId.value = inventoryMap[key].id;
+            qtyInput.max = inventoryMap[key].stok;
+            if (parseInt(qtyInput.value || 1) > inventoryMap[key].stok) {
+                qtyInput.value = inventoryMap[key].stok;
+            }
+        } else {
+            hiddenId.value = '';
+            qtyInput.removeAttribute('max');
+        }
+    }
+
     let itemIndex = 1;
     function addItemRow() {
         const container = document.getElementById('items-container');
         const row = document.createElement('div');
-        row.className = 'grid grid-cols-12 gap-2';
+        row.className = 'grid grid-cols-12 gap-2 item-row';
         row.innerHTML = `
-            <input type="text" name="items[${itemIndex}][name]" placeholder="Nama alat berikutnya..." required
-                   class="col-span-9 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
+            <input type="hidden" name="items[${itemIndex}][inventory_id]" class="inventory-id-input">
+            <input type="text" name="items[${itemIndex}][name]" list="inventory-options"
+                   oninput="syncInventorySelection(this)"
+                   placeholder="Pilih / ketik alat berikutnya..." required autocomplete="off"
+                   class="col-span-8 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             <input type="number" name="items[${itemIndex}][qty]" value="1" min="1" required
-                   class="col-span-3 px-2.5 py-2 text-sm text-center border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
+                   class="col-span-3 px-2.5 py-2 text-sm text-center border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A] qty-input">
+            <button type="button" onclick="this.closest('.item-row').remove()"
+                    class="col-span-1 flex items-center justify-center text-slate-400 hover:text-rose-600 text-base font-bold"
+                    title="Hapus baris">&times;</button>
         `;
         container.appendChild(row);
         itemIndex++;

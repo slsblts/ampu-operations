@@ -62,7 +62,7 @@
 
     <!-- Bottom Navigation -->
     <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-20">
-        <div class="max-w-xl mx-auto grid grid-cols-3 h-14">
+        <div class="max-w-xl mx-auto grid grid-cols-4 h-14">
             <a href="{{ route('logbook.index') }}"
                class="flex flex-col items-center justify-center text-[11px] font-medium {{ request()->routeIs('logbook.*') ? 'text-[#1E3A8A] font-semibold' : 'text-slate-500 hover:text-slate-800' }}">
                 <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -79,6 +79,14 @@
                 Jadwal
             </a>
 
+            <a href="{{ route('inventori.index') }}"
+               class="flex flex-col items-center justify-center text-[11px] font-medium {{ request()->routeIs('inventori.*') ? 'text-[#1E3A8A] font-semibold' : 'text-slate-500 hover:text-slate-800' }}">
+                <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                </svg>
+                Inventori
+            </a>
+
             <a href="{{ route('riwayat.index') }}"
                class="flex flex-col items-center justify-center text-[11px] font-medium {{ request()->routeIs('riwayat.*') ? 'text-[#1E3A8A] font-semibold' : 'text-slate-500 hover:text-slate-800' }}">
                 <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -88,7 +96,6 @@
             </a>
         </div>
     </nav>
-
     @stack('scripts')
 </body>
 </html>

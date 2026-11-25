@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Inventory;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\StudioBooking;
@@ -13,12 +14,17 @@ class LoanController extends Controller
 {
     public function index()
     {
-        $activeLoans = Loan::with(['items', 'issuedBy'])
+        $activeLoans = Loan::with(['items.inventory', 'issuedBy'])
             ->where('status', 'borrowed')
             ->latest()
             ->get();
 
-        return view('logbook.index', compact('activeLoans'));
+        $inventories = Inventory::where('stok_tersedia', '>', 0)
+            ->where('kondisi', '!=', 'Rusak')
+            ->orderBy('nama_alat', 'asc')
+            ->get();
+
+        return view('logbook.index', compact('activeLoans', 'inventories'));
     }
 
     public function store(Request $request)
@@ -31,9 +37,23 @@ class LoanController extends Controller
             'purpose' => 'required|string|max:255',
             'borrow_date' => 'required|date',
             'items' => 'required|array|min:1',
+            'items.*.inventory_id' => 'nullable|exists:inventories,id',
             'items.*.name' => 'required|string|max:255',
             'items.*.qty' => 'required|integer|min:1',
         ]);
+
+        // Validasi ketersediaan stok terlebih dahulu sebelum menyimpan transaksi
+        foreach ($request->items as $item) {
+            $inventory = !empty($item['inventory_id'])
+                ? Inventory::find($item['inventory_id'])
+                : Inventory::where('nama_alat', trim($item['name']))->first();
+
+            if ($inventory && $item['qty'] > $inventory->stok_tersedia) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['items' => "Stok {$inventory->nama_alat} tidak mencukupi (tersedia: {$inventory->stok_tersedia} unit)."]);
+            }
+        }
 
         DB::transaction(function () use ($request) {
             $loan = Loan::create([
@@ -48,15 +68,24 @@ class LoanController extends Controller
             ]);
 
             foreach ($request->items as $item) {
+                $inventory = !empty($item['inventory_id'])
+                    ? Inventory::find($item['inventory_id'])
+                    : Inventory::where('nama_alat', trim($item['name']))->first();
+
                 LoanItem::create([
                     'loan_id' => $loan->id,
-                    'item_name' => $item['name'],
+                    'inventory_id' => $inventory?->id,
+                    'item_name' => $inventory ? $inventory->nama_alat : trim($item['name']),
                     'quantity' => $item['qty'],
                 ]);
+
+                if ($inventory) {
+                    $inventory->decrement('stok_tersedia', $item['qty']);
+                }
             }
         });
 
-        return redirect()->route('logbook.index')->with('success', 'Peminjaman berhasil dicatat ke logbook.');
+        return redirect()->route('logbook.index')->with('success', 'Peminjaman berhasil dicatat & stok inventori diperbarui.');
     }
 
     public function returnItem(Request $request, Loan $loan)
@@ -67,15 +96,31 @@ class LoanController extends Controller
             'return_notes' => 'nullable|string',
         ]);
 
-        $loan->update([
-            'return_date' => $request->return_date,
-            'status' => 'returned',
-            'return_condition' => $request->return_condition,
-            'return_notes' => $request->return_notes,
-            'received_by_admin_id' => Auth::id(),
-        ]);
+        DB::transaction(function () use ($request, $loan) {
+            if ($loan->status === 'borrowed') {
+                $loan->load('items.inventory');
 
-        return redirect()->route('logbook.index')->with('success', 'Alat telah dikonfirmasi kembali & dipindahkan ke Riwayat.');
+                foreach ($loan->items as $item) {
+                    if ($item->inventory) {
+                        $newStock = min(
+                            $item->inventory->stok_total,
+                            $item->inventory->stok_tersedia + $item->quantity
+                        );
+                        $item->inventory->update(['stok_tersedia' => $newStock]);
+                    }
+                }
+            }
+
+            $loan->update([
+                'return_date' => $request->return_date,
+                'status' => 'returned',
+                'return_condition' => $request->return_condition,
+                'return_notes' => $request->return_notes,
+                'received_by_admin_id' => Auth::id(),
+            ]);
+        });
+
+        return redirect()->route('logbook.index')->with('success', 'Alat telah dikonfirmasi kembali & stok inventori dipulihkan.');
     }
 
     public function history(Request $request)

@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\StudioBookingController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\InventoryController;
 
 Route::get('/', fn() => redirect()->route('login'));
 
@@ -12,6 +13,12 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
+
+    Route::get('/inventori', [InventoryController::class, 'index'])->name('inventori.index');
+    Route::post('/inventori', [InventoryController::class, 'store'])->name('inventori.store');
+    Route::put('/inventori/{inventory}', [InventoryController::class, 'update'])->name('inventori.update');
+    Route::delete('/inventori/{inventory}', [InventoryController::class, 'destroy'])->name('inventori.destroy');
+
     // Halaman 1: Logbook Aktif & Modal Pengembalian
     Route::get('/logbook', [LoanController::class, 'index'])->name('logbook.index');
     Route::post('/logbook', [LoanController::class, 'store'])->name('logbook.store');
