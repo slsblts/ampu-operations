@@ -64,16 +64,16 @@
                         <div class="flex items-start justify-between gap-2">
                             <div>
                                 <span class="text-[10px] font-bold uppercase tracking-wider text-[#1E3A8A]">
-                                    {{ $booking->studio_name }}
+                                    {{ $booking->nama_studio }}
                                 </span>
                                 <h3 class="text-sm font-semibold text-slate-900 mt-0.5">
-                                    {{ $booking->project_name }}
+                                    {{ $booking->nama_acara }}
                                 </h3>
                                 <p class="text-[11px] text-slate-500 mt-0.5">
-                                    PIC / Kru: <strong class="text-slate-700">{{ $booking->pic_crew }}</strong> • Sesi: {{ $booking->time_slot }}
+                                    PIC / Kru: <strong class="text-slate-700">{{ $booking->pic_kru }}</strong> • Sesi: {{ $booking->sesi_jam }}
                                 </p>
                             </div>
-                            @if($booking->status === 'completed')
+                            @if($booking->status === 'selesai')
                                 <span class="text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     Selesai
                                 </span>
@@ -85,7 +85,7 @@
                         </div>
 
                         <div class="mt-2.5 pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
-                            <span>Tanggal: <strong class="text-slate-700">{{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}</strong></span>
+                            <span>Tanggal: <strong class="text-slate-700">{{ \Carbon\Carbon::parse($booking->tanggal_booking)->format('d M Y') }}</strong></span>
                             <span>Dicatat oleh: <strong>{{ $booking->createdBy->name ?? '-' }}</strong></span>
                         </div>
                     </div>
@@ -110,11 +110,11 @@
                         <div class="flex items-start justify-between gap-2">
                             <div>
                                 <h3 class="text-sm font-semibold text-slate-900">
-                                    {{ $loan->borrower_name }}
-                                    <span class="text-xs font-normal text-slate-500">({{ $loan->borrower_id_number }})</span>
+                                    {{ $loan->nama_peminjam }}
+                                    <span class="text-xs font-normal text-slate-500">({{ $loan->nim_nik }})</span>
                                 </h3>
                                 <p class="text-[11px] text-slate-500 mt-0.5">
-                                    HP: {{ $loan->phone_number }} • {{ $loan->organization }} — {{ $loan->purpose }}
+                                    HP: {{ $loan->no_hp }} • {{ $loan->organisasi }} — {{ $loan->keperluan }}
                                 </p>
                             </div>
                             <span class="text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -124,13 +124,13 @@
 
                         <div class="mt-2 bg-slate-50 border border-gray-100 rounded p-2 text-xs text-slate-800">
                             <span class="text-[10px] font-semibold uppercase text-slate-400 block mb-0.5">Barang Dipinjam:</span>
-                            {{ $loan->items->map(fn($i) => "{$i->item_name} ({$i->quantity})")->implode(', ') }}
+                            {{ $loan->items->map(fn($i) => "{$i->nama_barang} ({$i->jumlah})")->implode(', ') }}
                         </div>
 
                         <div class="mt-2.5 pt-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
                             <span>
-                                {{ \Carbon\Carbon::parse($loan->borrow_date)->format('d M Y') }} →
-                                <strong class="text-slate-700">{{ \Carbon\Carbon::parse($loan->return_date)->format('d M Y') }}</strong>
+                                {{ \Carbon\Carbon::parse($loan->tanggal_pinjam)->format('d M Y') }} →
+                                <strong class="text-slate-700">{{ \Carbon\Carbon::parse($loan->tanggal_kembali)->format('d M Y') }}</strong>
                             </span>
                             <span>Mengetahui: <strong>{{ $loan->receivedBy->name ?? ($loan->issuedBy->name ?? '-') }}</strong></span>
                         </div>

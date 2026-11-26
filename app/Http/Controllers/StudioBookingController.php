@@ -10,8 +10,8 @@ class StudioBookingController extends Controller
 {
     public function index()
     {
-        $bookings = StudioBooking::whereIn('status', ['scheduled', 'confirmed'])
-            ->orderBy('booking_date')
+        $bookings = StudioBooking::whereIn('status', ['terjadwal', 'dikonfirmasi'])
+            ->orderBy('tanggal_booking')
             ->get();
 
         return view('jadwal.index', compact('bookings'));
@@ -20,21 +20,21 @@ class StudioBookingController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'studio_name' => 'required|string|max:100',
-            'project_name' => 'required|string|max:255',
-            'pic_crew' => 'required|string|max:255',
-            'booking_date' => 'required|date',
-            'time_slot' => 'required|string|max:100',
+            'nama_studio' => 'required|string|max:100',
+            'nama_acara' => 'required|string|max:255',
+            'pic_kru' => 'required|string|max:255',
+            'tanggal_booking' => 'required|date',
+            'sesi_jam' => 'required|string|max:100',
         ]);
 
         StudioBooking::create([
-            'studio_name' => $request->studio_name,
-            'project_name' => $request->project_name,
-            'pic_crew' => $request->pic_crew,
-            'booking_date' => $request->booking_date,
-            'time_slot' => $request->time_slot,
-            'status' => 'confirmed',
-            'created_by_admin_id' => Auth::id(),
+            'nama_studio' => $request->nama_studio,
+            'nama_acara' => $request->nama_acara,
+            'pic_kru' => $request->pic_kru,
+            'tanggal_booking' => $request->tanggal_booking,
+            'sesi_jam' => $request->sesi_jam,
+            'status' => 'dikonfirmasi',
+            'admin_pembuat_id' => Auth::id(),
         ]);
 
         return redirect()->route('jadwal.index')->with('success', 'Jadwal studio berhasil ditambahkan.');
@@ -43,7 +43,7 @@ class StudioBookingController extends Controller
     public function updateStatus(Request $request, StudioBooking $booking)
     {
         $request->validate([
-            'status' => 'required|in:completed,cancelled',
+            'status' => 'required|in:selesai,dibatalkan',
         ]);
 
         $booking->update(['status' => $request->status]);

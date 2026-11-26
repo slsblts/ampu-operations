@@ -14,6 +14,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
 
+    Route::get('/inventori/export', [InventoryController::class, 'exportCsv'])->name('inventori.export');
     Route::get('/inventori', [InventoryController::class, 'index'])->name('inventori.index');
     Route::post('/inventori', [InventoryController::class, 'store'])->name('inventori.store');
     Route::put('/inventori/{inventory}', [InventoryController::class, 'update'])->name('inventori.update');

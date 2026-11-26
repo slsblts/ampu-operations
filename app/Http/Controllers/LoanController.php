@@ -15,7 +15,7 @@ class LoanController extends Controller
     public function index()
     {
         $activeLoans = Loan::with(['items.inventory', 'issuedBy'])
-            ->where('status', 'borrowed')
+            ->where('status', 'dipinjam')
             ->latest()
             ->get();
 
@@ -30,19 +30,18 @@ class LoanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'borrower_name' => 'required|string|max:255',
-            'borrower_id_number' => 'required|string|max:100',
-            'phone_number' => 'required|string|max:50',
-            'organization' => 'required|string|max:255',
-            'purpose' => 'required|string|max:255',
-            'borrow_date' => 'required|date',
+            'nama_peminjam' => 'required|string|max:255',
+            'nim_nik' => 'required|string|max:100',
+            'no_hp' => 'required|string|max:50',
+            'organisasi' => 'required|string|max:255',
+            'keperluan' => 'required|string|max:255',
+            'tanggal_pinjam' => 'required|date',
             'items' => 'required|array|min:1',
-            'items.*.inventory_id' => 'nullable|exists:inventories,id',
+            'items.*.inventory_id' => 'nullable|exists:inventori,id',
             'items.*.name' => 'required|string|max:255',
             'items.*.qty' => 'required|integer|min:1',
         ]);
 
-        // Validasi ketersediaan stok terlebih dahulu sebelum menyimpan transaksi
         foreach ($request->items as $item) {
             $inventory = !empty($item['inventory_id'])
                 ? Inventory::find($item['inventory_id'])
@@ -57,14 +56,14 @@ class LoanController extends Controller
 
         DB::transaction(function () use ($request) {
             $loan = Loan::create([
-                'borrower_name' => $request->borrower_name,
-                'borrower_id_number' => $request->borrower_id_number,
-                'phone_number' => $request->phone_number,
-                'organization' => $request->organization,
-                'purpose' => $request->purpose,
-                'borrow_date' => $request->borrow_date,
-                'status' => 'borrowed',
-                'issued_by_admin_id' => Auth::id(),
+                'nama_peminjam' => $request->nama_peminjam,
+                'nim_nik' => $request->nim_nik,
+                'no_hp' => $request->no_hp,
+                'organisasi' => $request->organisasi,
+                'keperluan' => $request->keperluan,
+                'tanggal_pinjam' => $request->tanggal_pinjam,
+                'status' => 'dipinjam',
+                'admin_pinjam_id' => Auth::id(),
             ]);
 
             foreach ($request->items as $item) {
@@ -73,10 +72,10 @@ class LoanController extends Controller
                     : Inventory::where('nama_alat', trim($item['name']))->first();
 
                 LoanItem::create([
-                    'loan_id' => $loan->id,
-                    'inventory_id' => $inventory?->id,
-                    'item_name' => $inventory ? $inventory->nama_alat : trim($item['name']),
-                    'quantity' => $item['qty'],
+                    'peminjaman_id' => $loan->id,
+                    'inventori_id' => $inventory?->id,
+                    'nama_barang' => $inventory ? $inventory->nama_alat : trim($item['name']),
+                    'jumlah' => $item['qty'],
                 ]);
 
                 if ($inventory) {
@@ -91,20 +90,20 @@ class LoanController extends Controller
     public function returnItem(Request $request, Loan $loan)
     {
         $request->validate([
-            'return_date' => 'required|date',
-            'return_condition' => 'required|string|max:100',
-            'return_notes' => 'nullable|string',
+            'tanggal_kembali' => 'required|date',
+            'kondisi_kembali' => 'required|string|max:100',
+            'catatan_kembali' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($request, $loan) {
-            if ($loan->status === 'borrowed') {
+            if ($loan->status === 'dipinjam') {
                 $loan->load('items.inventory');
 
                 foreach ($loan->items as $item) {
                     if ($item->inventory) {
                         $newStock = min(
                             $item->inventory->stok_total,
-                            $item->inventory->stok_tersedia + $item->quantity
+                            $item->inventory->stok_tersedia + $item->jumlah
                         );
                         $item->inventory->update(['stok_tersedia' => $newStock]);
                     }
@@ -112,11 +111,11 @@ class LoanController extends Controller
             }
 
             $loan->update([
-                'return_date' => $request->return_date,
-                'status' => 'returned',
-                'return_condition' => $request->return_condition,
-                'return_notes' => $request->return_notes,
-                'received_by_admin_id' => Auth::id(),
+                'tanggal_kembali' => $request->tanggal_kembali,
+                'status' => 'dikembalikan',
+                'kondisi_kembali' => $request->kondisi_kembali,
+                'catatan_kembali' => $request->catatan_kembali,
+                'admin_kembali_id' => Auth::id(),
             ]);
         });
 
@@ -127,49 +126,47 @@ class LoanController extends Controller
     {
         $tab = $request->get('tab', 'alat');
 
-        // 1. Query Riwayat Peminjaman Alat
         $loanQuery = Loan::with(['items', 'issuedBy', 'receivedBy'])
-            ->where('status', 'returned');
+            ->where('status', 'dikembalikan');
 
         if ($request->filled('search') && $tab === 'alat') {
             $search = $request->search;
             $loanQuery->where(function ($q) use ($search) {
-                $q->where('borrower_name', 'like', "%{$search}%")
-                  ->orWhere('borrower_id_number', 'like', "%{$search}%")
-                  ->orWhere('organization', 'like', "%{$search}%")
-                  ->orWhere('purpose', 'like', "%{$search}%")
-                  ->orWhereHas('items', fn($q2) => $q2->where('item_name', 'like', "%{$search}%"));
+                $q->where('nama_peminjam', 'like', "%{$search}%")
+                  ->orWhere('nim_nik', 'like', "%{$search}%")
+                  ->orWhere('organisasi', 'like', "%{$search}%")
+                  ->orWhere('keperluan', 'like', "%{$search}%")
+                  ->orWhereHas('items', fn($q2) => $q2->where('nama_barang', 'like', "%{$search}%"));
             });
         }
 
         if ($request->filter === 'today') {
-            $loanQuery->whereDate('return_date', today());
+            $loanQuery->whereDate('tanggal_kembali', today());
         } elseif ($request->filter === 'week') {
-            $loanQuery->whereBetween('return_date', [now()->startOfWeek(), now()->endOfWeek()]);
+            $loanQuery->whereBetween('tanggal_kembali', [now()->startOfWeek(), now()->endOfWeek()]);
         }
 
-        $returnedLoans = $loanQuery->latest('return_date')->get();
+        $returnedLoans = $loanQuery->latest('tanggal_kembali')->get();
 
-        // 2. Query Riwayat Peminjaman Studio (completed & cancelled)
         $studioQuery = StudioBooking::with('createdBy')
-            ->whereIn('status', ['completed', 'cancelled']);
+            ->whereIn('status', ['selesai', 'dibatalkan']);
 
         if ($request->filled('search') && $tab === 'studio') {
             $search = $request->search;
             $studioQuery->where(function ($q) use ($search) {
-                $q->where('studio_name', 'like', "%{$search}%")
-                  ->orWhere('project_name', 'like', "%{$search}%")
-                  ->orWhere('pic_crew', 'like', "%{$search}%");
+                $q->where('nama_studio', 'like', "%{$search}%")
+                  ->orWhere('nama_acara', 'like', "%{$search}%")
+                  ->orWhere('pic_kru', 'like', "%{$search}%");
             });
         }
 
         if ($request->filter === 'today') {
-            $studioQuery->whereDate('booking_date', today());
+            $studioQuery->whereDate('tanggal_booking', today());
         } elseif ($request->filter === 'week') {
-            $studioQuery->whereBetween('booking_date', [now()->startOfWeek(), now()->endOfWeek()]);
+            $studioQuery->whereBetween('tanggal_booking', [now()->startOfWeek(), now()->endOfWeek()]);
         }
 
-        $completedBookings = $studioQuery->latest('booking_date')->get();
+        $completedBookings = $studioQuery->latest('tanggal_booking')->get();
 
         return view('riwayat.index', compact('returnedLoans', 'completedBookings', 'tab'));
     }
@@ -180,8 +177,8 @@ class LoanController extends Controller
 
         if ($tab === 'studio') {
             $bookings = StudioBooking::with('createdBy')
-                ->whereIn('status', ['completed', 'cancelled'])
-                ->latest('booking_date')
+                ->whereIn('status', ['selesai', 'dibatalkan'])
+                ->latest('tanggal_booking')
                 ->get();
 
             $filename = 'riwayat-studio-ampu-' . now()->format('Y-m-d') . '.csv';
@@ -196,12 +193,12 @@ class LoanController extends Controller
 
                 foreach ($bookings as $booking) {
                     fputcsv($file, [
-                        $booking->booking_date,
-                        $booking->studio_name,
-                        $booking->project_name,
-                        $booking->pic_crew,
-                        $booking->time_slot,
-                        $booking->status === 'completed' ? 'Selesai' : 'Dibatalkan',
+                        $booking->tanggal_booking,
+                        $booking->nama_studio,
+                        $booking->nama_acara,
+                        $booking->pic_kru,
+                        $booking->sesi_jam,
+                        $booking->status === 'selesai' ? 'Selesai' : 'Dibatalkan',
                         $booking->createdBy->name ?? '-',
                     ]);
                 }
@@ -212,8 +209,8 @@ class LoanController extends Controller
         }
 
         $loans = Loan::with(['items', 'issuedBy', 'receivedBy'])
-            ->where('status', 'returned')
-            ->latest('return_date')
+            ->where('status', 'dikembalikan')
+            ->latest('tanggal_kembali')
             ->get();
 
         $filename = 'riwayat-logbook-ampu-' . now()->format('Y-m-d') . '.csv';
@@ -227,18 +224,18 @@ class LoanController extends Controller
             fputcsv($file, ['Tanggal Pinjam', 'Tanggal Kembali', 'Nama Peminjam', 'NIM/NIK', 'No. HP', 'Organisasi/Divisi', 'Keperluan/Acara', 'Barang & Jumlah', 'Kondisi Kembali', 'Catatan', 'Mengetahui Pinjam', 'Diterima Kembali']);
 
             foreach ($loans as $loan) {
-                $itemsText = $loan->items->map(fn($i) => "{$i->item_name} ({$i->quantity})")->implode(', ');
+                $itemsText = $loan->items->map(fn($i) => "{$i->nama_barang} ({$i->jumlah})")->implode(', ');
                 fputcsv($file, [
-                    $loan->borrow_date,
-                    $loan->return_date,
-                    $loan->borrower_name,
-                    $loan->borrower_id_number,
-                    $loan->phone_number,
-                    $loan->organization,
-                    $loan->purpose,
+                    $loan->tanggal_pinjam,
+                    $loan->tanggal_kembali,
+                    $loan->nama_peminjam,
+                    $loan->nim_nik,
+                    $loan->no_hp,
+                    $loan->organisasi,
+                    $loan->keperluan,
                     $itemsText,
-                    $loan->return_condition,
-                    $loan->return_notes,
+                    $loan->kondisi_kembali,
+                    $loan->catatan_kembali,
                     $loan->issuedBy->name ?? '-',
                     $loan->receivedBy->name ?? '-',
                 ]);

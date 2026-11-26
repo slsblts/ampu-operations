@@ -22,19 +22,19 @@
 
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Nama Peminjam</label>
-                <input type="text" name="borrower_name" value="{{ old('borrower_name') }}" placeholder="Contoh: Priya / Rizki" required
+                <input type="text" name="nama_peminjam" value="{{ old('nama_peminjam') }}" placeholder="Contoh: Priya / Rizki" required
                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">NIM / NIK</label>
-                    <input type="text" name="borrower_id_number" value="{{ old('borrower_id_number') }}" placeholder="Contoh: 25SA21A4" required
+                    <input type="text" name="nim_nik" value="{{ old('nim_nik') }}" placeholder="Contoh: 25SA21A4" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">No. HP / WhatsApp</label>
-                    <input type="text" name="phone_number" value="{{ old('phone_number') }}" placeholder="Contoh: 081930522954" required
+                    <input type="text" name="no_hp" value="{{ old('no_hp') }}" placeholder="Contoh: 081930522954" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
             </div>
@@ -42,23 +42,23 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Organisasi / Divisi</label>
-                    <input type="text" name="organization" value="{{ old('organization') }}" placeholder="Contoh: HMPSSI / Intermedia" required
+                    <input type="text" name="organisasi" value="{{ old('organisasi') }}" placeholder="Contoh: HMPSSI / Intermedia" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Keperluan / Acara</label>
-                    <input type="text" name="purpose" value="{{ old('purpose') }}" placeholder="Contoh: Podcast / Makrab IF" required
+                    <input type="text" name="keperluan" value="{{ old('keperluan') }}" placeholder="Contoh: Podcast / Makrab IF" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
             </div>
 
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal Pinjam</label>
-                <input type="date" name="borrow_date" value="{{ old('borrow_date', date('Y-m-d')) }}" required
+                <input type="date" name="tanggal_pinjam" value="{{ old('tanggal_pinjam', date('Y-m-d')) }}" required
                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             </div>
 
-            <!-- Daftar Barang & Jumlah (Custom Searchable Dropdown + Ketik Manual) -->
+            <!-- Daftar Barang & Jumlah -->
             <div>
                 <div class="flex items-center justify-between mb-1">
                     <label class="block text-xs font-medium text-slate-700">Daftar Barang & Jumlah</label>
@@ -120,21 +120,21 @@
         <div class="space-y-3">
             @forelse($activeLoans as $loan)
                 @php
-                    $itemsSummary = $loan->items->map(fn($i) => "{$i->item_name} ({$i->quantity})")->implode(', ');
+                    $itemsSummary = $loan->items->map(fn($i) => "{$i->nama_barang} ({$i->jumlah})")->implode(', ');
                 @endphp
                 <div class="border border-gray-200 rounded-md p-3">
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <h3 class="text-sm font-semibold text-slate-900">
-                                {{ $loan->borrower_name }}
-                                <span class="text-xs font-normal text-slate-500">({{ $loan->borrower_id_number }})</span>
+                                {{ $loan->nama_peminjam }}
+                                <span class="text-xs font-normal text-slate-500">({{ $loan->nim_nik }})</span>
                             </h3>
                             <p class="text-xs font-medium text-[#1E3A8A] mt-0.5">
-                                {{ $loan->organization }} • {{ $loan->purpose }}
+                                {{ $loan->organisasi }} • {{ $loan->keperluan }}
                             </p>
                         </div>
                         <span class="text-[11px] text-slate-400 whitespace-nowrap">
-                            {{ \Carbon\Carbon::parse($loan->borrow_date)->format('d M Y') }}
+                            {{ \Carbon\Carbon::parse($loan->tanggal_pinjam)->format('d M Y') }}
                         </span>
                     </div>
 
@@ -143,9 +143,9 @@
                     </p>
 
                     <div class="mt-2.5 flex items-center justify-between">
-                        <span class="text-[11px] text-slate-400">HP: {{ $loan->phone_number }}</span>
+                        <span class="text-[11px] text-slate-400">HP: {{ $loan->no_hp }}</span>
                         <button type="button"
-                                onclick="openReturnModal({{ $loan->id }}, '{{ addslashes($loan->borrower_name) }} ({{ $loan->borrower_id_number }})', '{{ $loan->phone_number }}', '{{ addslashes($loan->organization . ' • ' . $loan->purpose) }}', '{{ addslashes($itemsSummary) }}')"
+                                onclick="openReturnModal({{ $loan->id }}, '{{ addslashes($loan->nama_peminjam) }} ({{ $loan->nim_nik }})', '{{ $loan->no_hp }}', '{{ addslashes($loan->organisasi . ' • ' . $loan->keperluan) }}', '{{ addslashes($itemsSummary) }}')"
                                 class="text-xs font-medium text-slate-800 bg-white hover:bg-slate-50 border border-gray-300 px-3 py-1.5 rounded-md">
                             Kembalikan
                         </button>
@@ -182,13 +182,13 @@
                 @csrf
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal Kembali</label>
-                    <input type="date" name="return_date" value="{{ date('Y-m-d') }}" required
+                    <input type="date" name="tanggal_kembali" value="{{ date('Y-m-d') }}" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
 
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Status Kondisi Fisik</label>
-                    <select name="return_condition" required
+                    <select name="kondisi_kembali" required
                             class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                         <option value="Lengkap & Normal">Lengkap & Normal</option>
                         <option value="Perlu Cek">Perlu Cek</option>
@@ -198,7 +198,7 @@
 
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Catatan Kondisi Alat (Opsional)</label>
-                    <input type="text" name="return_notes" placeholder="Contoh: Lengkap, baterai penuh, aman"
+                    <input type="text" name="catatan_kembali" placeholder="Contoh: Lengkap, baterai penuh, aman"
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
 

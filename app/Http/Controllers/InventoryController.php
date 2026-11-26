@@ -75,9 +75,59 @@ class InventoryController extends Controller
 
     public function destroy(Inventory $inventory)
     {
+        if ($inventory->sedangDipinjam()) {
+            return redirect()->route('inventori.index')
+                ->withErrors(['delete' => "Alat \"{$inventory->nama_alat}\" tidak dapat dihapus karena sedang dalam status dipinjam."]);
+        }
+
         $inventory->delete();
 
         return redirect()->route('inventori.index')
             ->with('success', 'Alat berhasil dihapus dari daftar inventori.');
+    }
+
+    public function exportCsv()
+    {
+        $inventories = Inventory::orderBy('kategori', 'asc')
+            ->orderBy('nama_alat', 'asc')
+            ->get();
+
+        $filename = 'rekap-inventori-ampu-' . now()->format('Y-m-d') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($inventories) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, [
+                'No',
+                'Nama Alat',
+                'Kategori',
+                'Stok Total',
+                'Stok Tersedia',
+                'Sedang Dipinjam',
+                'Kondisi',
+                'Catatan',
+            ]);
+
+            foreach ($inventories as $index => $item) {
+                $dipinjam = max(0, $item->stok_total - $item->stok_tersedia);
+                fputcsv($file, [
+                    $index + 1,
+                    $item->nama_alat,
+                    $item->kategori ?? '-',
+                    $item->stok_total,
+                    $item->stok_tersedia,
+                    $dipinjam,
+                    $item->kondisi,
+                    $item->catatan ?? '-',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

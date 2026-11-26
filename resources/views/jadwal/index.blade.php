@@ -23,13 +23,13 @@
                 <label class="block text-xs font-medium text-slate-700 mb-1">Pilih Studio</label>
                 <div class="grid grid-cols-2 gap-2">
                     <label class="cursor-pointer">
-                        <input type="radio" name="studio_name" value="Studio 1 - Podcast" checked class="peer hidden">
+                        <input type="radio" name="nama_studio" value="Studio 1 - Podcast" checked class="peer hidden">
                         <div class="text-center py-2 px-3 text-xs font-medium border border-gray-300 rounded-md peer-checked:bg-[#1E3A8A] peer-checked:text-white peer-checked:border-[#1E3A8A]">
                             Studio 1 - Podcast
                         </div>
                     </label>
                     <label class="cursor-pointer">
-                        <input type="radio" name="studio_name" value="Studio 2 - Utama" class="peer hidden">
+                        <input type="radio" name="nama_studio" value="Studio 2 - Utama" class="peer hidden">
                         <div class="text-center py-2 px-3 text-xs font-medium border border-gray-300 rounded-md peer-checked:bg-[#1E3A8A] peer-checked:text-white peer-checked:border-[#1E3A8A]">
                             Studio 2 - Utama
                         </div>
@@ -39,25 +39,25 @@
 
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">Nama Project / Acara</label>
-                <input type="text" name="project_name" placeholder="Contoh: Tiki Talks Ep. 15" required
+                <input type="text" name="nama_acara" placeholder="Contoh: Tiki Talks Ep. 15" required
                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             </div>
 
             <div>
                 <label class="block text-xs font-medium text-slate-700 mb-1">PIC / Kru Bertugas</label>
-                <input type="text" name="pic_crew" placeholder="Contoh: Nizar, Ratim, Abi" required
+                <input type="text" name="pic_kru" placeholder="Contoh: Nizar, Ratim, Abi" required
                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal</label>
-                    <input type="date" name="booking_date" value="{{ date('Y-m-d') }}" required
+                    <input type="date" name="tanggal_booking" value="{{ date('Y-m-d') }}" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-700 mb-1">Rentang Jam</label>
-                    <input type="text" name="time_slot" placeholder="13:00 - 16:00 WIB" required
+                    <input type="text" name="sesi_jam" placeholder="13:00 - 16:00 WIB" required
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#1E3A8A]">
                 </div>
             </div>
@@ -83,29 +83,29 @@
                 <div class="border border-gray-200 rounded-md p-3">
                     <div class="flex items-center justify-between mb-1.5">
                         <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#1E3A8A]">
-                            {{ $booking->studio_name }}
+                            {{ $booking->nama_studio }}
                         </span>
                         <span class="text-[11px] text-slate-500">
-                            {{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}
+                            {{ \Carbon\Carbon::parse($booking->tanggal_booking)->format('d M Y') }}
                         </span>
                     </div>
 
-                    <h3 class="text-sm font-semibold text-slate-900">{{ $booking->project_name }}</h3>
+                    <h3 class="text-sm font-semibold text-slate-900">{{ $booking->nama_acara }}</h3>
                     <p class="text-xs text-slate-600 mt-1">
-                        Jam: <strong>{{ $booking->time_slot }}</strong> • PIC: {{ $booking->pic_crew }}
+                        Jam: <strong>{{ $booking->sesi_jam }}</strong> • PIC: {{ $booking->pic_kru }}
                     </p>
 
                     <div class="flex justify-end gap-2 mt-2.5 pt-2 border-t border-gray-100">
                         <form action="{{ route('jadwal.status', $booking->id) }}" method="POST">
                             @csrf @method('PATCH')
-                            <input type="hidden" name="status" value="completed">
+                            <input type="hidden" name="status" value="selesai">
                             <button type="submit" class="text-[11px] font-medium text-emerald-700 hover:underline px-2 py-0.5">
                                 Selesai
                             </button>
                         </form>
                         <form action="{{ route('jadwal.status', $booking->id) }}" method="POST">
                             @csrf @method('PATCH')
-                            <input type="hidden" name="status" value="cancelled">
+                            <input type="hidden" name="status" value="dibatalkan">
                             <button type="submit" class="text-[11px] font-medium text-rose-600 hover:underline px-2 py-0.5">
                                 Batal
                             </button>

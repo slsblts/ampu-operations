@@ -2,27 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class LoanItem extends Model
 {
-    use HasFactory;
+    protected $table = 'detail_peminjaman';
 
     protected $fillable = [
-        'loan_id',
-        'inventory_id',
-        'item_name',
-        'quantity',
+        'peminjaman_id',
+        'inventori_id',
+        'nama_barang',
+        'jumlah',
     ];
 
-    public function loan()
+    public function peminjaman()
     {
-        return $this->belongsTo(Loan::class);
+        return $this->belongsTo(Loan::class, 'peminjaman_id');
     }
 
     public function inventory()
     {
-        return $this->belongsTo(Inventory::class);
+        return $this->belongsTo(Inventory::class, 'inventori_id');
     }
 }
